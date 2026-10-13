@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ae2032">
+  <meta name="description" content="홍콩 여행용 환율·구매 계산기. 품목별 구매 기록, 총액, 오프라인 계산, 백업 지원.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="홍콩 환율">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <title>홍콩 환율 계산기</title>
+  <style>
+    :root {font-family: -apple-system,BlinkMacSystemFont,"Pretendard","Noto Sans KR","Segoe UI",sans-serif;color:#1b2026;background:#f8f6f2;font-synthesis:none}
+    * {box-sizing:border-box}
+    body {margin:0;min-height:100dvh;background:linear-gradient(170deg,#fdf7f4 0%,#f8f6f2 55%)}
+    button,input {font:inherit}
+    button {cursor:pointer;touch-action:manipulation}
+    .app {max-width:490px;margin:0 auto;padding:36px 22px max(36px,env(safe-area-inset-bottom))}
+    .header {display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:28px}
+    .eyebrow {font-size:11px;font-weight:850;color:#ae2032;letter-spacing:2px;margin-bottom:9px}
+    h1 {font-size:26px;line-height:1.22;margin:0;letter-spacing:-1.1px;font-weight:850}
+    .sub {font-size:13px;color:#7c8389;margin-top:9px}
+    .stamp {height:49px;width:49px;border:2px solid #eac5c6;border-radius:15px;display:grid;place-items:center;color:#ae2032;font-size:25px;font-weight:900;flex-shrink:0;transform:rotate(5deg);background:#fffafa}
+    .panel {background:white;border-radius:25px;border:1px solid #eee9e4;box-shadow:0 14px 35px rgba(54,37,33,.065);padding:23px 21px}
+    .field-header {display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;gap:10px}
+    .field-label {font-size:14px;font-weight:800;color:#484d52}
+    .flag {margin-right:5px}
+    .badge {font-size:11px;border-radius:99px;background:#f3f4f5;padding:7px 10px;color:#667077;white-space:nowrap}
+    .badge.good {background:#edf5ee;color:#207047}
+    .badge.off {background:#fff4e0;color:#996213}
+    .input-row {display:flex;align-items:baseline;gap:10px;border-bottom:2px solid #e8e8e8;padding-bottom:13px}
+    .currency {font-weight:750;color:#ae2032;font-size:30px;letter-spacing:-1px}
+    #amount {background:transparent;border:0;outline:0;width:100%;min-width:0;color:#20252a;font-size:46px;font-weight:850;letter-spacing:-2px;font-variant-numeric:tabular-nums}
+    #amount::placeholder {color:#c3c4c6}
+    #amount:focus-visible {outline:none}
+    .presets {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:16px}
+    .presets button {border:1px solid #e6e4e2;background:#faf9f8;padding:10px 0;border-radius:11px;color:#4f575e;font-size:13px;font-weight:700}
+    .presets button:active {transform:scale(.97);background:#f2e6e6}
+    .arrow {display:flex;align-items:center;justify-content:center;height:55px}
+    .swap {height:43px;width:43px;border-radius:50%;border:1px solid #eadcdf;background:#fff;color:#ae2032;font-size:22px;font-weight:800;box-shadow:0 3px 9px rgba(85,39,40,.07)}
+    .result {background:#a91f32;border-radius:20px;color:white;padding:20px 21px 22px}
+    .result .mini {font-size:13px;font-weight:650;color:#ffdee2;margin-bottom:8px}
+    .total {font-size:38px;line-height:1.25;letter-spacing:-1.6px;font-variant-numeric:tabular-nums;font-weight:850;overflow-wrap:anywhere}
+    .approx {font-size:12px;color:#f9dfe1;margin-top:10px;line-height:1.5}
+    .ratepanel {margin-top:15px;border-radius:17px;background:#fff;border:1px solid #eee9e4;padding:17px 18px}
+    .rateflex {display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .rate-title {color:#73797f;font-size:12px;margin-bottom:6px}
+    #rateText {font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+    .refresh {display:inline-flex;align-items:center;gap:5px;padding:10px 12px;border-radius:10px;color:#a91f32;border:1px solid #eddcdf;background:#fffaf9;font-size:12px;font-weight:800;white-space:nowrap}
+    .refresh:disabled {opacity:.55;cursor:default}
+    #rateMeta {font-size:12px;line-height:1.6;color:#757e86;margin-top:8px}
+    details {margin-top:18px;background:white;border:1px solid #eee9e4;border-radius:15px;padding:0 16px}
+    summary {padding:16px 0;cursor:pointer;font-size:13px;font-weight:800;color:#454b50}
+    .settings {border-top:1px solid #efefef;padding:15px 0 16px}
+    .settings p {font-size:12px;color:#70777f;line-height:1.55;margin:0 0 12px}
+    .settings label {display:block;font-size:12px;color:#42484f;font-weight:750;margin-bottom:7px}
+    .setting-row {display:flex;gap:8px;margin-bottom:11px}
+    .setting-input {width:100%;min-width:0;padding:11px 10px;border:1px solid #dfe1e3;border-radius:10px;font-size:17px}
+    .secondary {padding:10px 12px;border:1px solid #e3cacc;border-radius:10px;background:#fff5f5;color:#9d2131;font-size:12px;font-weight:800;white-space:nowrap}
+    .secondary.plain {background:white;color:#64696d;border-color:#dedede}
+    .fee {width:100%;max-width:155px;margin-bottom:9px}
+    .jump-nav {display:flex;gap:8px;margin:-8px 0 18px}
+    .jump-nav a {flex:1;text-decoration:none;text-align:center;border:1px solid #e7ded9;color:#7a4b50;background:#fff;border-radius:13px;font-size:13px;font-weight:800;padding:12px 6px}
+    .jump-nav a:focus-visible,button:focus-visible,input:focus-visible {outline:3px solid #e3a5ac;outline-offset:2px}
+    .purchase {margin-top:20px}
+    .purchase-heading {display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin:0 0 13px}
+    .purchase-heading h2 {font-size:19px;letter-spacing:-.7px;margin:0}
+    .purchase-heading .sub {font-size:12px;margin:0;line-height:1.5;text-align:right}
+    .purchase-panel {background:#fff;border:1px solid #eee9e4;border-radius:23px;padding:21px 19px;box-shadow:0 10px 30px rgba(54,37,33,.045)}
+    .buy-label {display:block;font-size:12px;font-weight:800;color:#464d53;margin-bottom:7px}
+    .buy-input {display:block;border:1px solid #e3e3e3;border-radius:11px;width:100%;min-width:0;background:#fff;padding:12px 13px;font-size:16px;color:#22262b}
+    .calc-wrap {margin-top:14px;border:1px solid #eadfe1;background:#faf7f7;padding:14px;border-radius:17px}
+    #calcExpr {width:100%;border:0;border-bottom:1px solid #e3d9da;border-radius:0;background:transparent;text-align:right;font-size:28px;font-weight:800;padding:6px 0 9px;outline:0;color:#24282b;letter-spacing:-.4px}
+    #calcExpr::placeholder {color:#a9a4a7}
+    .calc-output {text-align:right;padding:12px 0 14px;min-height:83px}
+    .calc-output strong {display:block;font-size:25px;font-weight:850;letter-spacing:-.7px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+    .calc-output small {display:block;color:#777077;font-size:12px;margin-top:5px}
+    .keys {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+    .key {border:1px solid #e5dfe1;border-radius:12px;padding:12px 2px;background:#fff;color:#26282d;font-size:20px;font-weight:750;min-height:48px}
+    .key.op {background:#f2edef;color:#a32d3a}
+    .key.equal {background:#aa2336;color:#fff;border-color:#aa2336}
+    .key:active {transform:scale(.97)}
+    .key.equal {grid-row:span 2;font-size:24px}
+    .calc-actions {display:grid;grid-template-columns:1.5fr 1fr;gap:9px;margin-top:14px}
+    .save-buy,.clear-buy {border:0;border-radius:12px;padding:14px 10px;font-size:14px;font-weight:850}
+    .save-buy {color:#fff;background:#ad2439}
+    .save-buy:disabled {background:#c6bec0;cursor:not-allowed}
+    .clear-buy {background:#f3f0ee;color:#56555a}
+    .buy-help {font-size:12px;line-height:1.6;color:#85858a;margin:12px 0 0}
+    .buy-status {min-height:19px;font-size:12px;line-height:1.5;color:#9b3341;margin-top:11px}
+    .ledger {margin-top:17px;border:1px solid #eee9e4;background:#fff;border-radius:23px;padding:21px 19px}
+    .ledger-head {display:flex;justify-content:space-between;align-items:baseline;margin-bottom:15px;gap:10px}
+    .ledger-head h2 {font-size:19px;letter-spacing:-.5px;margin:0}
+    .ledger-head span {font-size:12px;color:#7f838a}
+    .sum-box {border-radius:16px;background:#303b41;color:white;padding:17px}
+    .sum-flex {display:flex;justify-content:space-between;align-items:center;gap:12px;color:#cbd3d4;font-size:12px;font-weight:700}
+    #sumHkd {font-size:26px;letter-spacing:-.4px;font-weight:850;margin-top:8px;overflow-wrap:anywhere}
+    #sumKrw {font-size:16px;font-weight:800;margin-top:4px;overflow-wrap:anywhere}
+    .sum-note {font-size:11px;color:#d0d6d7;margin-top:7px;line-height:1.5}
+    .record-list {display:grid;gap:0;margin:10px 0 14px}
+    .empty-list {text-align:center;padding:27px 0;font-size:13px;color:#8a8990;line-height:1.6}
+    .record {display:flex;align-items:flex-start;justify-content:space-between;gap:9px;padding:15px 0;border-bottom:1px solid #f0eeee}
+    .record:last-child {border-bottom:0}
+    .record-title {font-size:14px;font-weight:800;overflow-wrap:anywhere}
+    .record-sub {font-size:11px;color:#85888c;margin-top:6px;line-height:1.4}
+    .record-money {text-align:right;white-space:nowrap;min-width:0}
+    .record-hkd {font-size:15px;font-weight:850;font-variant-numeric:tabular-nums}
+    .record-krw {font-size:12px;color:#777d83;margin-top:3px}
+    .record-buttons {display:flex;gap:6px;justify-content:flex-end;margin-top:8px}
+    .tiny-btn {font-size:12px;background:#f7f6f5;color:#535b61;border:1px solid #e6e4e3;border-radius:8px;padding:7px 9px;font-weight:700}
+    .tiny-btn.danger {color:#ac3341;background:#fff6f6;border-color:#f0e1e2}
+    .manager {display:flex;flex-wrap:wrap;gap:8px;padding-top:9px}
+    .manager button,.manager .file-button {flex:1 1 auto;padding:10px 9px;border:1px solid #e2dfdc;border-radius:10px;color:#5b6267;background:#faf9f8;font-size:12px;font-weight:800;text-align:center;cursor:pointer}
+    .manager .danger {color:#a42b3a;background:#fff4f4;border-color:#ead9db}
+    .edit-box {border:1px solid #e5d5d7;background:#fffafb;border-radius:14px;padding:13px;margin:0 0 12px}
+    .edit-box h3 {font-size:14px;margin:0 0 12px}
+    .edit-box .edit-fields {display:grid;grid-template-columns:1.4fr 1fr;gap:8px}
+    .edit-box .edit-fields label {font-size:11px;font-weight:750;color:#5e5e63}
+    .edit-box .edit-fields input {margin-top:6px;font-size:14px;padding:10px}
+    .edit-actions {display:flex;justify-content:flex-end;gap:7px;margin-top:11px}
+    .edit-actions button {border:1px solid #e2d4d6;background:white;color:#a02938;padding:9px 13px;border-radius:9px;font-size:12px;font-weight:850}
+    .edit-actions button.primary {background:#ad2439;color:white;border-color:#ad2439}
+    .file-button input {display:none}
+    .visually-hidden {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    @media (max-width:380px) {.purchase-panel,.ledger {padding:17px 14px}.record {gap:6px}.record-money {font-size:13px}.key {padding:9px 2px;min-height:44px}}
+    .hint {font-size:11px;line-height:1.65;color:#858b90;margin-top:19px;padding:0 2px}
+    .hint a {color:inherit;text-decoration:underline}
+    #message {color:#9b3341;font-size:12px;margin-top:7px;min-height:16px}
+    @media (max-width:380px) {.app{padding:24px 14px 28px}.panel{padding:20px 16px}#amount{font-size:40px}.total{font-size:34px}.presets button{font-size:11px}h1{font-size:24px}}
+    @media (prefers-reduced-motion:no-preference) {.refresh,.swap,.presets button {transition:background .15s,transform .15s}}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div><div class="eyebrow">HONG KONG · TRAVEL TOOL</div><h1>홍콩 환율 계산기</h1><div class="sub">현지 가격을 원화로 바로 확인하세요.</div></div>
+      <div class="stamp" aria-hidden="true">HK</div>
+    </header>
+    <nav class="jump-nav" aria-label="앱 메뉴"><a href="#converter">환율 계산</a><a href="#shopping">구매 계산·기록 ↓</a></nav>
+    <section id="converter" class="panel" aria-label="환율 계산">
+      <div class="field-header"><label for="amount" class="field-label"><span id="inFlag" class="flag">🇭🇰</span><span id="inLabel">홍콩 달러 (HKD)</span></label><span id="status" class="badge">환율 확인 중</span></div>
+      <div class="input-row"><span id="inSymbol" class="currency">$</span><input id="amount" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="100" aria-label="변환할 금액"></div>
+      <div id="presets" class="presets" aria-label="빠른 금액 입력"></div>
+      <div class="arrow"><button id="swap" class="swap" type="button" aria-label="변환 방향 바꾸기" title="변환 방향 바꾸기">⇄</button></div>
+      <div class="result" aria-live="polite" aria-atomic="true">
+        <div id="outLabel" class="mini">🇰🇷 예상 원화 금액</div>
+        <div id="output" class="total">—</div>
+        <div id="outputSub" class="approx">환율을 가져오고 있습니다.</div>
+      </div>
+    </section>
+    <section class="ratepanel" aria-label="사용 환율 정보">
+      <div class="rateflex">
+        <div><div class="rate-title">현재 적용 환율</div><div id="rateText">1 HKD = — KRW</div></div>
+        <button id="refresh" type="button" class="refresh">↻ 새로고침</button>
+      </div>
+      <div id="rateMeta">환율 정보 연결 중…</div>
+      <div id="message" role="status" aria-live="polite"></div>
+    </section>
+    <section class="purchase" id="shopping" aria-labelledby="shoppingTitle">
+      <div class="purchase-heading"><h2 id="shoppingTitle">구매 계산기</h2><div class="sub">여러 가격을 계산하고<br>필요한 결과만 기록하세요.</div></div>
+      <div class="purchase-panel">
+        <label for="buyName" class="buy-label">구매 품목 (선택 입력)</label>
+        <input id="buyName" class="buy-input" type="text" maxlength="80" autocomplete="off" placeholder="예: 피규어, 간식, 교통비">
+        <div class="calc-wrap">
+          <label for="calcExpr" class="buy-label">가격 계산 · HKD</label>
+          <input id="calcExpr" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" maxlength="120" placeholder="0" aria-describedby="calcHelp">
+          <div class="calc-output" aria-live="polite" aria-atomic="true"><strong id="calcHkd">HK$ 0.00</strong><small id="calcKrw">약 0원</small></div>
+          <div id="keys" class="keys" aria-label="구매 금액 계산 키패드"></div>
+        </div>
+        <div class="calc-actions"><button id="saveBuy" type="button" class="save-buy" disabled>결과 기록하기</button><button id="clearBuy" type="button" class="clear-buy">결과 지우기</button></div>
+        <p id="calcHelp" class="buy-help">숫자 → 연산자 → 숫자 → <b>=</b> 순서로 계산하세요. <b>C</b>는 초기화, <b>⌫</b>는 한 글자 삭제입니다. 기록하기 전까지 저장되지 않습니다.</p>
+        <div id="buyStatus" class="buy-status" role="status" aria-live="polite"></div>
+      </div>
+      <div class="ledger" aria-labelledby="ledgerTitle">
+        <div class="ledger-head"><h2 id="ledgerTitle">구매 기록</h2><span id="recordCount">0건</span></div>
+        <div class="sum-box"><div class="sum-flex"><span>기록된 금액 합계</span><span>🇭🇰 HKD</span></div><div id="sumHkd">HK$ 0.00</div><div id="sumKrw">약 0원</div><div class="sum-note">원화 합계는 현재 적용 중인 환율과 여유분으로 계산됩니다.</div></div>
+        <div id="recordList" class="record-list" aria-live="polite"></div>
+        <div id="editBox" class="edit-box" hidden>
+          <h3>구매 기록 수정</h3>
+          <div class="edit-fields"><label for="editName">품목명<input id="editName" class="buy-input" type="text" maxlength="80"></label><label for="editAmount">금액 (HKD)<input id="editAmount" class="buy-input" type="number" min="0.01" max="99999999.99" step="0.01" inputmode="decimal"></label></div>
+          <div class="edit-actions"><button id="cancelEdit" type="button">취소</button><button id="saveEdit" type="button" class="primary">수정 저장</button></div>
+        </div>
+        <div class="manager"><button id="exportBuy" type="button">기록 백업</button><label class="file-button" for="importBuy">백업 불러오기<input id="importBuy" type="file" accept=".json,application/json"></label><button id="clearAll" type="button" class="danger">전체 삭제</button></div>
+        <p class="buy-help">기록은 현재 브라우저에 저장됩니다. 휴대폰 변경·브라우저 데이터 삭제에 대비해 가끔 <b>기록 백업</b>을 사용하세요. 불러오기는 기존 기록을 교체합니다.</p>
+      </div>
+    </section>
+    <details>
+      <summary>⚙ 수동 환율 및 추가 비용 설정</summary>
+      <div class="settings">
+        <p>인터넷이 없거나 직접 환율을 지정하고 싶으면 <b>1 HKD당 원화</b>를 입력하세요.</p>
+        <label for="manualRate">수동 환율 (1 HKD = ? KRW)</label>
+        <div class="setting-row"><input class="setting-input" id="manualRate" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="예: 180"><button id="applyManual" type="button" class="secondary">적용</button><button id="useAuto" type="button" class="secondary plain">자동 복귀</button></div>
+        <label for="fee">추가 비용·환율 여유분 (%)</label>
+        <input class="setting-input fee" id="fee" type="number" inputmode="decimal" min="0" max="30" step="0.1" value="0">
+        <p>기본값은 0%. 실제 카드 수수료나 환전 우대율을 반영하지 않은 참고용 계산입니다. 여유분을 넣으면 예상 원화 금액에 가산됩니다.</p>
+      </div>
+    </details>
+    <div class="hint">환율 출처: <a href="https://frankfurter.dev/ko/" target="_blank" rel="noopener noreferrer">Frankfurter</a> (공식 기관 기준 일별 자료). 초 단위 실시간 거래 환율이 아닙니다. 카드·환전소의 최종 적용 금액과 차이 날 수 있습니다. 인터넷에서 한 번 조회한 환율은 기기에 저장되며, 오프라인에서도 계산에 사용할 수 있습니다.</div>
+  </main>
+  <script>
+  (() => {
+    'use strict';
+    const STORAGE_KEY = 'hkd-krw-travel-v1';
+    const API = 'https://api.frankfurter.dev/v2/rate/hkd/krw';
+    const $ = (id) => document.getElementById(id);
+    const el = Object.fromEntries(['amount','status','inFlag','inLabel','inSymbol','presets','swap','outLabel','output','outputSub','rateText','rateMeta','refresh','message','manualRate','applyManual','useAuto','fee'].map(id => [id, $(id)]));
+    const won = (n) => new Intl.NumberFormat('ko-KR', {maximumFractionDigits:0}).format(Math.round(n));
+    const dollar = (n) => new Intl.NumberFormat('en-HK',{minimumFractionDigits:0,maximumFractionDigits:2}).format(n);
+    const positive = (value) => Number.isFinite(Number(value)) && Number(value) > 0;
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; } catch (_) {}
+    const state = {
+      rate: positive(saved.rate) ? Number(saved.rate) : null,
+      date: typeof saved.date === 'string' ? saved.date : '',
+      fetchedAt: typeof saved.fetchedAt === 'number' ? saved.fetchedAt : null,
+      manual: positive(saved.manual) ? Number(saved.manual) : null,
+      manualOn: !!saved.manualOn && positive(saved.manual),
+      fee: Number.isFinite(Number(saved.fee)) && Number(saved.fee)>=0 && Number(saved.fee)<=30 ? Number(saved.fee) : 0,
+      direction: 'hkd',
+      fetching: false,
+      networkOk: false
+    };
+    function save() {
+      try {localStorage.setItem(STORAGE_KEY,JSON.stringify({rate:state.rate,date:state.date,fetchedAt:state.fetchedAt,manual:state.manual,manualOn:state.manualOn,fee:state.fee}));} catch (_) {}
+    }
+    const activeRate = () => state.manualOn ? state.manual : state.rate;
+    const sourceLabel = () => state.manualOn ? '수동 설정 환율' : state.networkOk ? '온라인 조회 환율' : state.rate ? '저장된 환율' : '환율 없음';
+    const amountValue = () => {
+      const cleaned = el.amount.value.replace(/,/g,'').replace(/[^\d.]/g,'');
+      const n = Number(cleaned);
+      return cleaned !== '' && Number.isFinite(n) && n>=0 ? n : null;
+    };
+    function updateNumbers() {
+      const rate = activeRate();
+      const number = amountValue();
+      const factor = 1 + state.fee / 100;
+      el.rateText.textContent = positive(rate) ? `1 HKD = ${Number(rate).toLocaleString('ko-KR',{maximumFractionDigits:4})} KRW` : '1 HKD = — KRW';
+      el.status.textContent = state.fetching && !positive(rate) ? '불러오는 중' : sourceLabel();
+      el.status.className = 'badge' + (state.manualOn || state.networkOk ? ' good' : state.rate ? ' off' : '');
+      if (!positive(rate)) {
+        el.output.textContent='—';
+        el.outputSub.textContent='인터넷 연결 후 새로고침하거나 수동 환율을 입력하세요.';
+      } else if (number === null) {
+        el.output.textContent='—';
+        el.outputSub.textContent='금액을 입력하세요.';
+      } else if (state.direction === 'hkd') {
+        el.output.textContent = `${won(number * rate * factor)}원`;
+        el.outputSub.textContent = `${dollar(number)} HKD × ${Number(rate).toLocaleString('ko-KR',{maximumFractionDigits:4})} KRW` + (state.fee ? ` · 여유분 ${state.fee}%` : '');
+      } else {
+        el.output.textContent = `${dollar(number / (rate * factor))} HKD`;
+        el.outputSub.textContent = `${won(number)} KRW ÷ 적용 환율` + (state.fee ? ` · 여유분 ${state.fee}% 반영` : '');
+      }
+      const dateText = state.date ? `기준일 ${state.date}` : '기준일 정보 없음';
+      const timeText = state.fetchedAt ? ` · 마지막 조회 ${new Date(state.fetchedAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'})}` : '';
+      renderPurchases();
+      el.rateMeta.textContent = state.manualOn ? `수동 입력 환율 적용 중${state.rate ? ` · 자동 ${dateText}` : ''}` : state.rate ? `${dateText}${timeText} · ${state.networkOk ? '온라인 연결 확인' : '이전에 저장한 환율 사용 중'}` : '자동 환율을 가져오지 못했습니다.';
+    }
+    function buildPresets() {
+      const values = state.direction === 'hkd' ? [10,50,100,500,1000] : [10000,30000,50000,100000,200000];
+      el.presets.replaceChildren();
+      for (const v of values) {
+        const b = document.createElement('button');
+        b.type='button';
+        b.textContent = state.direction === 'hkd' ? `$${v.toLocaleString()}` : `${Math.round(v/10000).toLocaleString()}만원`;
+        b.addEventListener('click',()=> {el.amount.value=v.toLocaleString('en-US'); updateNumbers();});
+        el.presets.appendChild(b);
+      }
+    }
+    function updateDirection() {
+      const hkd=state.direction==='hkd';
+      el.inFlag.textContent = hkd ? '🇭🇰' : '🇰🇷';
+      el.inLabel.textContent = hkd ? '홍콩 달러 (HKD)' : '대한민국 원 (KRW)';
+      el.inSymbol.textContent = hkd ? '$' : '₩';
+      el.outLabel.textContent = hkd ? '🇰🇷 예상 원화 금액' : '🇭🇰 구매 가능한 홍콩 달러';
+      buildPresets();
+      updateNumbers();
+    }
+    async function fetchRate() {
+      if(state.fetching) return;
+      state.fetching=true;
+      el.refresh.disabled=true;
+      el.refresh.textContent='조회 중…';
+      el.message.textContent='';
+      updateNumbers();
+      try {
+        const ctl=new AbortController();
+        const timer=setTimeout(()=>ctl.abort(),9000);
+        let response;
+        try {response=await fetch(API,{cache:'no-store',signal:ctl.signal});} finally {clearTimeout(timer);}
+        if(!response.ok) throw new Error('HTTP '+response.status);
+        const data=await response.json();
+        if (!positive(data.rate) || data.base?.toUpperCase()!=='HKD' || data.quote?.toUpperCase()!=='KRW') throw new Error('Invalid exchange rate');
+        state.rate=Number(data.rate);
+        state.date=typeof data.date==='string' ? data.date : '';
+        state.fetchedAt=Date.now();
+        state.networkOk=true;
+        save();
+        el.message.textContent='';
+      } catch(e) {
+        state.networkOk=false;
+        el.message.textContent=state.rate ? '온라인 조회에 실패해 저장된 환율을 사용합니다.' : '조회 실패: 인터넷 연결을 확인하거나 수동 환율을 입력하세요.';
+      } finally {
+        state.fetching=false;
+        el.refresh.disabled=false;
+        el.refresh.textContent='↻ 새로고침';
+        updateNumbers();
+      }
+    }
+    el.amount.addEventListener('input',()=>{
+      const old=el.amount.value;
+      const cleaned=old.replace(/[^\d.,]/g,'').replace(/,/g,'').replace(/(\..*)\./g,'$1');
+      if(old !== cleaned) el.amount.value=cleaned;
+      updateNumbers();
+    });
+    el.swap.addEventListener('click',()=>{
+      const current=amountValue();
+      const rate=activeRate();
+      if (current !== null && positive(rate)) {
+        const converted = state.direction === 'hkd' ? Math.round(current*rate*(1+state.fee/100)) : Number((current/(rate*(1+state.fee/100))).toFixed(2));
+        el.amount.value = String(converted);
+      } else el.amount.value = state.direction === 'hkd' ? '10000' : '100';
+      state.direction = state.direction === 'hkd' ? 'krw' : 'hkd';
+      updateDirection();
+    });
+    el.refresh.addEventListener('click',fetchRate);
+    el.applyManual.addEventListener('click',()=>{
+      const num=Number(el.manualRate.value);
+      if (!positive(num) || num>1000000) {el.message.textContent='수동 환율에 올바른 양수를 입력하세요.';return;}
+      state.manual=num;state.manualOn=true;el.message.textContent='수동 환율을 적용했습니다.';save();updateNumbers();
+    });
+    el.useAuto.addEventListener('click',()=>{state.manualOn=false;save();el.message.textContent='자동 환율로 전환합니다.';updateNumbers();fetchRate();});
+    el.fee.addEventListener('input',()=>{
+      const v=Number(el.fee.value);
+      if(!Number.isFinite(v)||v<0||v>30) {el.message.textContent='추가 비용은 0~30%로 입력하세요.';return;}
+      state.fee=v;save();el.message.textContent='';updateNumbers();
+    });
+    // 구매 내역은 환율 설정과 분리하여 저장합니다. 구버전 데이터는 그대로 유지합니다.
+    const PURCHASES_KEY = 'hkd-krw-purchases-v1';
+    const MAX_BUY_CENTS = 9999999999;
+    const purchaseIds = ['buyName','calcExpr','calcHkd','calcKrw','keys','saveBuy','clearBuy','buyStatus','recordCount','sumHkd','sumKrw','recordList','editBox','editName','editAmount','saveEdit','cancelEdit','exportBuy','importBuy','clearAll'];
+    const buy = Object.fromEntries(purchaseIds.map(id=>[id,$(id)]));
+    const makeId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `buy-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const roundCents = n => Math.round((n + Number.EPSILON) * 100);
+    function validRecord(r) {
+      return r && typeof r === 'object' && typeof r.id === 'string' && r.id.length <= 150 && typeof r.name === 'string' && r.name.length <= 80 &&
+        Number.isSafeInteger(r.cents) && r.cents > 0 && r.cents <= MAX_BUY_CENTS && Number.isFinite(r.createdAt) && r.createdAt >= 0;
+    }
+    function readPurchases() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(PURCHASES_KEY) || '[]');
+        return Array.isArray(raw) ? raw.filter(validRecord).slice(0,5000) : [];
+      } catch (_) { return []; }
+    }
+    let purchases = readPurchases();
+    let editingId = null;
+    function storePurchases(next) {
+      try {
+        localStorage.setItem(PURCHASES_KEY,JSON.stringify(next));
+        purchases = next;
+        return true;
+      } catch (_) {
+        buy.buyStatus.textContent = '기록 저장에 실패했습니다. 브라우저 저장 공간이나 설정을 확인하세요.';
+        return false;
+      }
+    }
+    function parseExpression(input) {
+      const s = input.replace(/\s|,/g,'').replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+      if (!s || s.length > 120 || !/^[\d.+\-*/()]+$/.test(s)) return null;
+      let i = 0;
+      function factor() {
+        if (s[i] === '+') {i++;return factor();}
+        if (s[i] === '-') {i++;return -factor();}
+        if (s[i] === '(') {i++;const v = expression();if (s[i] !== ')') throw Error('괄호');i++;return v;}
+        const match = /^(?:\d+(?:\.\d*)?|\.\d+)/.exec(s.slice(i));
+        if (!match) throw Error('숫자');
+        i += match[0].length;
+        return Number(match[0]);
+      }
+      function term() {
+        let v = factor();
+        while (s[i] === '*' || s[i] === '/') {
+          const op = s[i++]; const next = factor(); v = op === '*' ? v * next : v / next;
+        }
+        return v;
+      }
+      function expression() {
+        let v = term();
+        while (s[i] === '+' || s[i] === '-') {
+          const op = s[i++]; const next = term(); v = op === '+' ? v + next : v - next;
+        }
+        return v;
+      }
+      try {
+        const number = expression();
+        return i === s.length && Number.isFinite(number) && number >= 0 && number <= MAX_BUY_CENTS/100 ? number : null;
+      } catch (_) {return null;}
+    }
+    function calcCents() {
+      const value = parseExpression(buy.calcExpr.value);
+      const cents = value === null ? null : roundCents(value);
+      return cents !== null && cents > 0 && cents <= MAX_BUY_CENTS ? cents : null;
+    }
+    function krwForCents(cents) {
+      const rate = activeRate();
+      return positive(rate) ? `약 ${won(cents / 100 * rate * (1+state.fee/100))}원` : '원화 환산: 환율 정보 없음';
+    }
+    function updatePurchaseCalc() {
+      const cents = calcCents();
+      buy.saveBuy.disabled = cents === null;
+      buy.calcHkd.textContent = cents === null ? (/[+−×÷]$/.test(buy.calcExpr.value) ? '다음 숫자를 입력하세요' : buy.calcExpr.value ? '계산식을 확인하세요' : 'HK$ 0.00') : `HK$ ${dollar(cents/100)}`;
+      buy.calcKrw.textContent = cents === null ? (/[+−×÷]$/.test(buy.calcExpr.value) ? '계산 중' : buy.calcExpr.value ? '유효한 양수 금액을 입력하세요.' : '계산하면 원화 금액도 표시됩니다.') : krwForCents(cents);
+    }
+    function addText(tag, className, textValue, parent) {
+      const node = document.createElement(tag);
+      if (className) node.className=className;
+      node.textContent=textValue;
+      parent.appendChild(node);
+      return node;
+    }
+    function renderPurchases() {
+      const centsTotal = purchases.reduce((total, p)=>total+p.cents,0);
+      buy.recordCount.textContent = `${purchases.length}건`;
+      buy.sumHkd.textContent = `HK$ ${dollar(centsTotal/100)}`;
+      buy.sumKrw.textContent = centsTotal === 0 ? '약 0원' : krwForCents(centsTotal);
+      buy.clearAll.disabled = purchases.length===0;
+      buy.exportBuy.disabled = purchases.length===0;
+      buy.recordList.replaceChildren();
+      if (purchases.length===0) {
+        addText('div','empty-list','아직 저장된 구매 내역이 없습니다.\n계산 후 「결과 기록하기」를 눌러 보세요.',buy.recordList).style.whiteSpace='pre-line';
+      }
+      for (const p of purchases.slice().reverse()) {
+        const record = addText('div','record','',buy.recordList);
+        const left = addText('div','','',record);
+        addText('div','record-title',p.name || '이름 없는 구매',left);
+        addText('div','record-sub',new Date(p.createdAt).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}),left);
+        const right = addText('div','record-money','',record);
+        addText('div','record-hkd',`HK$ ${dollar(p.cents/100)}`,right);
+        addText('div','record-krw',krwForCents(p.cents),right);
+        const tools = addText('div','record-buttons','',right);
+        const editBtn = addText('button','tiny-btn','수정',tools);
+        editBtn.type='button';editBtn.setAttribute('aria-label',`${p.name || '이름 없는 구매'} 기록 수정`);
+        editBtn.addEventListener('click',()=>beginEdit(p.id));
+        const delBtn = addText('button','tiny-btn danger','삭제',tools);
+        delBtn.type='button';delBtn.setAttribute('aria-label',`${p.name || '이름 없는 구매'} 기록 삭제`);
+        delBtn.addEventListener('click',()=>deletePurchase(p.id));
+      }
+      updatePurchaseCalc();
+    }
+    // 숫자 키는 언제나 계산식의 맨 뒤에 입력합니다.
+    // 버튼 클릭 시 이전 커서 위치를 재사용하면 24+50이 2450+처럼 섞일 수 있습니다.
+    let justEvaluated = false;
+    function appendCalcKey(value) {
+      let expression = buy.calcExpr.value.replace(/\s/g,'');
+      const operators = ['+', '−', '×', '÷'];
+      const isOperator = operators.includes(value);
+      if (value === 'C') {
+        expression = '';
+        justEvaluated = false;
+      } else if (value === '⌫') {
+        expression = expression.slice(0,-1);
+        justEvaluated = false;
+      } else if (value === '=') {
+        const cents = calcCents();
+        if (cents !== null) {
+          expression = (cents/100).toFixed(2).replace(/\.?0+$/,'');
+          justEvaluated = true;
+        }
+      } else if (isOperator) {
+        // 연산자를 연속으로 누르면 마지막 연산자만 교체합니다.
+        if (!expression) return;
+        if (/[+−×÷]$/.test(expression)) expression = expression.slice(0,-1);
+        expression += value;
+        justEvaluated = false;
+      } else {
+        // = 이후 숫자를 누르면 새 계산, 연산자를 누르면 이어서 계산합니다.
+        if (justEvaluated) expression = '';
+        justEvaluated = false;
+        if (value === '.') {
+          const currentNumber = expression.split(/[+−×÷]/).pop();
+          if (currentNumber.includes('.')) return;
+          if (!currentNumber) expression += '0';
+        }
+        if (value === '00' && (!expression || /[+−×÷]$/.test(expression))) value = '0';
+        expression += value;
+      }
+      if (expression.length > 120) return;
+      buy.calcExpr.value = expression;
+      // 커서는 항상 끝으로 이동해 숫자 버튼이 식 중간에 끼어들지 않게 합니다.
+      buy.calcExpr.setSelectionRange(expression.length,expression.length);
+      buy.buyStatus.textContent = '';
+      updatePurchaseCalc();
+    }
+    const keyValues = ['C','⌫','÷','×','7','8','9','−','4','5','6','+','1','2','3','=','00','0','.'];
+    for (const value of keyValues) {
+      const button = addText('button','key'+ ('÷×−+'.includes(value)&&value.length===1?' op':'')+(value==='='?' equal':''),value,buy.keys);
+      button.type='button';
+      button.setAttribute('aria-label',value==='C'?'계산식 모두 지우기':value==='⌫'?'마지막 글자 지우기':value==='='?'계산 결과 확인':value);
+      button.addEventListener('click',()=>appendCalcKey(value));
+    }
+    buy.calcExpr.addEventListener('input',()=>{
+      const cleaned = buy.calcExpr.value.replace(/[^\d.,+\-*/()×÷−\s]/g,'').slice(0,120);
+      if (buy.calcExpr.value !== cleaned) buy.calcExpr.value=cleaned;
+      justEvaluated = false;
+      buy.buyStatus.textContent='';updatePurchaseCalc();
+    });
+    buy.calcExpr.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();appendCalcKey('=');}});
+    buy.saveBuy.addEventListener('click',()=>{
+      const cents=calcCents();
+      if (cents===null) return;
+      const name=buy.buyName.value.trim().slice(0,80);
+      const record={id:makeId(),name,cents,createdAt:Date.now()};
+      if (storePurchases([...purchases,record])) {
+        buy.calcExpr.value='';buy.buyName.value='';justEvaluated=false;
+        renderPurchases();
+        buy.buyStatus.textContent=`${name || '구매 항목'} HK$ ${dollar(cents/100)} 기록을 저장했습니다.`;
+      }
+    });
+    buy.clearBuy.addEventListener('click',()=>{
+      buy.calcExpr.value='';buy.buyName.value='';justEvaluated=false;
+      buy.buyStatus.textContent='계산 결과를 기록하지 않고 지웠습니다.';
+      updatePurchaseCalc();
+    });
+    function closeEdit() {editingId=null;buy.editBox.hidden=true;}
+    function beginEdit(id) {
+      const record = purchases.find(p=>p.id===id);
+      if (!record) return;
+      editingId=id;buy.editBox.hidden=false;
+      buy.editName.value=record.name;
+      buy.editAmount.value=(record.cents/100).toFixed(2);
+      buy.editBox.scrollIntoView({block:'nearest',behavior:'smooth'});
+      buy.editName.focus({preventScroll:true});
+    }
+    buy.cancelEdit.addEventListener('click',closeEdit);
+    buy.saveEdit.addEventListener('click',()=>{
+      const n=Number(buy.editAmount.value);
+      const cents=roundCents(n);
+      if (!Number.isFinite(n) || n<=0 || !Number.isSafeInteger(cents) || cents<=0 || cents>MAX_BUY_CENTS) {buy.buyStatus.textContent='수정 금액은 0보다 큰 숫자로 입력하세요.';return;}
+      const idx=purchases.findIndex(p=>p.id===editingId);
+      if(idx<0) return;
+      const next=purchases.map((p,i)=>i===idx?{...p,name:buy.editName.value.trim().slice(0,80),cents}:p);
+      if(storePurchases(next)) {closeEdit();renderPurchases();buy.buyStatus.textContent='구매 기록을 수정했습니다.';}
+    });
+    function deletePurchase(id) {
+      const target=purchases.find(p=>p.id===id);
+      if(!target) return;
+      if(!confirm(`「${target.name || '이름 없는 구매'}」 기록을 삭제할까요?`)) return;
+      if (storePurchases(purchases.filter(p=>p.id!==id))) {
+        if(editingId===id) closeEdit();
+        renderPurchases();buy.buyStatus.textContent='구매 기록을 삭제했습니다.';
+      }
+    }
+    buy.clearAll.addEventListener('click',()=>{
+      if (!purchases.length) return;
+      if(!confirm(`저장된 구매 기록 ${purchases.length}건을 모두 삭제할까요? 삭제하면 되돌릴 수 없습니다. 먼저 백업하는 것이 좋습니다.`)) return;
+      if(storePurchases([])) {closeEdit();renderPurchases();buy.buyStatus.textContent='전체 구매 기록을 삭제했습니다.';}
+    });
+    buy.exportBuy.addEventListener('click',()=>{
+      const backup={app:'hong-kong-travel-purchases',version:1,exportedAt:new Date().toISOString(),records:purchases};
+      const blob = new Blob([JSON.stringify(backup,null,2)],{type:'application/json;charset=utf-8'});
+      const url=URL.createObjectURL(blob);const link=document.createElement('a');
+      link.href=url;link.download=`홍콩_구매기록_${new Date().toISOString().slice(0,10)}.json`;
+      document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      buy.buyStatus.textContent='구매 기록 백업 파일을 저장했습니다.';
+    });
+    buy.importBuy.addEventListener('change',async()=>{
+      const file=buy.importBuy.files?.[0];
+      if (!file) return;
+      try {
+        if(file.size>2_000_000) throw Error('2MB 이하 백업 파일만 지원합니다.');
+        const backup=JSON.parse(await file.text());
+        if(backup?.app!=='hong-kong-travel-purchases'||backup.version!==1||!Array.isArray(backup.records)||backup.records.length>5000||!backup.records.every(validRecord)) throw Error('올바른 구매 기록 백업이 아닙니다.');
+        const ids=new Set(backup.records.map(r=>r.id));
+        if(ids.size!==backup.records.length) throw Error('중복된 기록이 있습니다.');
+        if(!confirm(`현재 기록 ${purchases.length}건을 백업의 ${backup.records.length}건으로 교체할까요?`)) return;
+        if(storePurchases(backup.records.map(r=>({id:r.id,name:r.name,cents:r.cents,createdAt:r.createdAt})))) {
+          closeEdit();renderPurchases();buy.buyStatus.textContent=`백업에서 ${backup.records.length}건을 불러왔습니다.`;
+        }
+      } catch (err) {buy.buyStatus.textContent='불러오기 실패: '+(err.message || '파일 확인 필요');}
+      finally {buy.importBuy.value='';}
+    });
+    el.manualRate.value=state.manual || '';
+    el.fee.value=String(state.fee);
+    updateDirection();
+    fetchRate();
+    document.addEventListener('visibilitychange',()=>{
+      if(!document.hidden && (!state.fetchedAt || Date.now()-state.fetchedAt>6*3600*1000)) fetchRate();
+    });
+    if('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+    }
+  })();
+  </script>
+</body>
+</html>
